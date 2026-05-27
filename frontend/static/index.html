@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GostChecker (temp frontend)</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>GostChecker (temp frontend)</h1>
+
+      <div class="card">
+        <h2>1) Загрузка DOCX и определение типа</h2>
+        <input id="fileInput" type="file" accept=".docx" />
+        <button id="classifyBtn" type="button">Определить тип документа</button>
+        <p class="hint" id="classifyHint"></p>
+        <div id="manualClassBlock" style="display:none; margin-top: 8px;">
+          <label class="label">Тип документа (вручную)</label>
+          <select id="manualClassSelect"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2) Выбор метода и режима проверки</h2>
+
+        <label class="label">Метод</label>
+        <select id="methodSelect"></select>
+
+        <label class="label">Действие</label>
+        <select id="actionSelect">
+          <option value="validate">Проверка</option>
+          <option value="correct">Исправление</option>
+          <option value="analyze">Анализ</option>
+        </select>
+
+        <label class="label">Профиль проверки</label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+          <button id="profileLightBtn" type="button">LIGHT</button>
+          <button id="profileMediumBtn" type="button">MEDIUM</button>
+          <button id="profileHardBtn" type="button">HARD</button>
+          <button id="profileCustomBtn" type="button">Custom</button>
+        </div>
+        <p class="hint" id="profileHint"></p>
+
+        <div id="customChecksBlock" style="display:none;">
+          <label class="label">Custom: выбери проверки</label>
+          <div id="customChecksList" class="violations"></div>
+        </div>
+
+        <label class="label">API URL backend</label>
+        <input
+          id="apiBaseInput"
+          type="text"
+          placeholder="http://127.0.0.1:8000"
+        />
+
+        <p class="hint" id="scopeHint"></p>
+
+        <button id="runBtn">Запустить проверку</button>
+      </div>
+
+      <div class="card" id="resultCard" style="display:none;">
+        <h2>3) Результат</h2>
+
+        <div id="downloadBlock" style="display:none; margin-bottom: 12px;">
+          <button id="downloadBtn" type="button">Скачать исправленный DOCX</button>
+          <p class="hint" id="downloadHint"></p>
+        </div>
+
+        <pre id="metaBlock" class="pre"></pre>
+
+        <h3>Справка по ошибкам</h3>
+        <div id="helpSummary"></div>
+
+        <h3>Список нарушений</h3>
+        <div id="violationsBlock" class="violations"></div>
+      </div>
+    </div>
+
+    <script src="violation-dictionary.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
+
