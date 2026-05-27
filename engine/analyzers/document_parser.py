@@ -117,6 +117,10 @@ class DocumentParser:
 
                 pf = dp.paragraph_format
                 first_line_indent_cm = pf.first_line_indent.cm if pf.first_line_indent is not None else None
+                left_indent_cm = pf.left_indent.cm if pf.left_indent is not None else None
+                right_indent_cm = pf.right_indent.cm if pf.right_indent is not None else None
+                space_before_pt = pf.space_before.pt if pf.space_before is not None else None
+                space_after_pt = pf.space_after.pt if pf.space_after is not None else None
                 line_spacing = pf.line_spacing
 
                 alignment = pf.alignment
@@ -139,6 +143,10 @@ class DocumentParser:
                         alignment=str(alignment_val) if alignment_val is not None else None,
                         line_spacing=float(line_spacing) if line_spacing is not None else None,
                         first_line_indent_cm=first_line_indent_cm,
+                        left_indent_cm=left_indent_cm,
+                        right_indent_cm=right_indent_cm,
+                        space_before_pt=space_before_pt,
+                        space_after_pt=space_after_pt,
                         in_table=False,
                         in_header_footer=False,
                         xml_element=xml_element,
@@ -195,6 +203,10 @@ class DocumentParser:
 
                             pf = para.paragraph_format
                             first_line_indent_cm = pf.first_line_indent.cm if pf.first_line_indent is not None else None
+                            left_indent_cm = pf.left_indent.cm if pf.left_indent is not None else None
+                            right_indent_cm = pf.right_indent.cm if pf.right_indent is not None else None
+                            space_before_pt = pf.space_before.pt if pf.space_before is not None else None
+                            space_after_pt = pf.space_after.pt if pf.space_after is not None else None
                             line_spacing = pf.line_spacing
                             alignment = pf.alignment
                             style_name = para.style.name if para.style is not None else None
@@ -211,6 +223,10 @@ class DocumentParser:
                                     alignment=str(alignment) if alignment is not None else None,
                                     line_spacing=float(line_spacing) if line_spacing is not None else None,
                                     first_line_indent_cm=first_line_indent_cm,
+                                    left_indent_cm=left_indent_cm,
+                                    right_indent_cm=right_indent_cm,
+                                    space_before_pt=space_before_pt,
+                                    space_after_pt=space_after_pt,
                                     in_table=True,
                                     in_header_footer=False,
                                     xml_element=xml_element,

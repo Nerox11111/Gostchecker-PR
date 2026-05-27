@@ -26,6 +26,10 @@ class ParagraphModel:
     alignment: str | None = None
     line_spacing: float | None = None
     first_line_indent_cm: float | None = None
+    left_indent_cm: float | None = None
+    right_indent_cm: float | None = None
+    space_before_pt: float | None = None
+    space_after_pt: float | None = None
     in_table: bool = False
     in_header_footer: bool = False
 

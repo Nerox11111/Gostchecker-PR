@@ -58,6 +58,14 @@ class FigureCaptionChecker:
                 issues.append(f"first_indent_cm={p.first_line_indent_cm}")
             if p.line_spacing is not None and abs(p.line_spacing - 1.5) > 0.1:
                 issues.append(f"line_spacing={p.line_spacing}")
+            if p.left_indent_cm is not None and abs(p.left_indent_cm) > 0.05:
+                issues.append(f"left_indent_cm={p.left_indent_cm}")
+            if p.right_indent_cm is not None and abs(p.right_indent_cm) > 0.05:
+                issues.append(f"right_indent_cm={p.right_indent_cm}")
+            if p.space_before_pt is not None and abs(p.space_before_pt) > 0.5:
+                issues.append(f"space_before_pt={p.space_before_pt}")
+            if p.space_after_pt is not None and abs(p.space_after_pt) > 0.5:
+                issues.append(f"space_after_pt={p.space_after_pt}")
 
             if issues:
                 violations.append(
@@ -65,7 +73,7 @@ class FigureCaptionChecker:
                         code="FIGURE_CAPTION_FORMAT_WRONG",
                         element_id=p.id,
                         message="Неверное форматирование подписи рисунка",
-                        expected="выравнивание по центру, отступ первой строки 0 см, интервал 1.5",
+                        expected="выравнивание по центру, отступы слева/справа/первой строки 0, интервалы до/после 0, межстрочный 1.5",
                         actual=";".join(issues),
                         zone_type=p.zone_type,
                         actual_text=text[:120],

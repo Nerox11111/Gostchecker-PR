@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from engine.models.violation_model import Severity, Violation
 from engine.models.zone_model import ZoneType
-from engine.shared.figure_format import is_center_alignment
+from engine.shared.figure_format import has_figure_image, is_center_alignment
 
 
 @dataclass
@@ -26,8 +26,7 @@ class FigureLayoutChecker:
             if p.id not in allowed_ids:
                 continue
             xml = getattr(p, "xml_element", None)
-            xml_text = xml.xml if xml is not None else ""
-            if "w:drawing" not in xml_text and "w:pict" not in xml_text:
+            if not has_figure_image(xml):
                 continue
 
             if not is_center_alignment(p.alignment):

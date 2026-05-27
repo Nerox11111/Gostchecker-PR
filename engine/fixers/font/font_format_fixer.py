@@ -12,12 +12,17 @@ from engine.shared.constants import (
     GOST_MAIN_FONT_SIZE_PT,
     GOST_LINE_SPACING_MAIN,
     GOST_FIRST_LINE_INDENT_CM,
+    GOST_LEFT_INDENT_CM,
     GOST_LISTING_FONT_SIZE_PT_MIN,
     GOST_LISTING_FONT_SIZE_PT_MAX,
     GOST_LISTING_LINE_SPACING,
     GOST_LISTING_INDENT_CM,
     GOST_MONO_FONT_NAME,
+    GOST_RIGHT_INDENT_CM,
+    GOST_SPACE_AFTER_PT,
+    GOST_SPACE_BEFORE_PT,
 )
+from engine.shared.figure_format import has_figure_image
 from engine.shared.paragraph_roles import is_listing_caption, is_structural_heading, is_zero_indent_exception
 
 
@@ -46,7 +51,9 @@ class FontFormatFixer:
         skip_ids = [
             p.id
             for p in document.paragraphs
-            if p.zone_type in {ZoneType.TITLE_PAGE, ZoneType.FIGURE, ZoneType.TOC} or p.id in heading_ids
+            if p.zone_type in {ZoneType.TITLE_PAGE, ZoneType.FIGURE, ZoneType.TOC}
+            or p.id in heading_ids
+            or has_figure_image(getattr(p, "xml_element", None))
         ]
 
         # Для listing-ов выбираем “нижнюю границу” допустимого диапазона (10pt),
@@ -62,6 +69,10 @@ class FontFormatFixer:
                         "font_size_pt": GOST_MAIN_FONT_SIZE_PT,
                         "line_spacing": GOST_LINE_SPACING_MAIN,
                         "first_line_indent_cm": GOST_FIRST_LINE_INDENT_CM,
+                        "left_indent_cm": GOST_LEFT_INDENT_CM,
+                        "right_indent_cm": GOST_RIGHT_INDENT_CM,
+                        "space_before_pt": GOST_SPACE_BEFORE_PT,
+                        "space_after_pt": GOST_SPACE_AFTER_PT,
                         "alignment": "JUSTIFY",
                     },
                     "listing": {
@@ -69,6 +80,10 @@ class FontFormatFixer:
                         "font_size_pt": GOST_LISTING_FONT_SIZE_PT_MIN,
                         "line_spacing": GOST_LISTING_LINE_SPACING,
                         "first_line_indent_cm": GOST_LISTING_INDENT_CM,
+                        "left_indent_cm": GOST_LEFT_INDENT_CM,
+                        "right_indent_cm": GOST_RIGHT_INDENT_CM,
+                        "space_before_pt": GOST_SPACE_BEFORE_PT,
+                        "space_after_pt": GOST_SPACE_AFTER_PT,
                         "alignment": "LEFT",
                     },
                     "listing_element_ids": listing_ids,
@@ -100,6 +115,10 @@ class FontFormatFixer:
                     meta={
                         "alignment": "LEFT",
                         "first_line_indent_cm": GOST_FIRST_LINE_INDENT_CM,
+                        "left_indent_cm": GOST_LEFT_INDENT_CM,
+                        "right_indent_cm": GOST_RIGHT_INDENT_CM,
+                        "space_before_pt": GOST_SPACE_BEFORE_PT,
+                        "space_after_pt": GOST_SPACE_AFTER_PT,
                         "line_spacing": GOST_LINE_SPACING_MAIN,
                         "font_name": GOST_MAIN_FONT_NAME,
                         "font_size_pt": GOST_MAIN_FONT_SIZE_PT,
@@ -116,7 +135,7 @@ class FontFormatFixer:
                 FixOperation(
                     action="SET_PARAGRAPH_FORMAT",
                     target_element_id=pid,
-                    meta={"first_line_indent_cm": 0.0},
+                    meta={"first_line_indent_cm": 0.0, "left_indent_cm": 0.0, "right_indent_cm": 0.0},
                 )
             )
 
@@ -142,6 +161,10 @@ class FontFormatFixer:
                     meta={
                         "alignment": "LEFT",
                         "first_line_indent_cm": 0.0,
+                        "left_indent_cm": GOST_LEFT_INDENT_CM,
+                        "right_indent_cm": GOST_RIGHT_INDENT_CM,
+                        "space_before_pt": GOST_SPACE_BEFORE_PT,
+                        "space_after_pt": GOST_SPACE_AFTER_PT,
                         "line_spacing": GOST_LINE_SPACING_MAIN,
                         "font_name": GOST_MAIN_FONT_NAME,
                         "font_size_pt": GOST_MAIN_FONT_SIZE_PT,

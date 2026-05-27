@@ -56,10 +56,10 @@ class Fixer:
             "SET_PAGE_MARGINS": 1,
             "SET_PAGE_NUMBERING": 2,
             "INSERT_EMPTY_PARAGRAPH_BEFORE": 15,
+            "SET_FONT_FORMATTING": 20,
+            "SET_FONT_FORMAT": 20,
             "SET_PARAGRAPH_TEXT": 25,
             "SET_PARAGRAPH_FORMAT": 30,
-            "SET_FONT_FORMATTING": 50,
-            "SET_FONT_FORMAT": 50,
         }
         operations_sorted = sorted(operations, key=lambda op: priority.get(op.action, 100))
 
@@ -247,6 +247,8 @@ class Fixer:
                 listing = (op.meta or {}).get("listing") or {}
                 listing_ids = set((op.meta or {}).get("listing_element_ids") or [])
                 skip_ids = set((op.meta or {}).get("skip_element_ids") or [])
+                listing_ids = {_adjusted_element_id(element_id) for element_id in listing_ids}
+                skip_ids = {_adjusted_element_id(element_id) for element_id in skip_ids}
 
                 # Нужно повторить нумерацию element_id, совпадающую с DocumentParser.
                 # Поэтому делаем обход p/tbl и считаем p_id/ t_id так же.
@@ -273,6 +275,8 @@ class Fixer:
                         p_id += 1
                         element_id = f"p{p_id}"
 
+                        if not (dp.text or "").strip():
+                            continue
                         if element_id in skip_ids:
                             continue
                         if element_id in listing_ids:
@@ -290,6 +294,8 @@ class Fixer:
                                 for pc_idx, para in enumerate(cell.paragraphs):
                                     p_id += 1
                                     element_id = f"t{t_id}_r{r_idx}_c{c_idx}_p{pc_idx}"
+                                    if not (para.text or "").strip():
+                                        continue
                                     if element_id in skip_ids:
                                         continue
                                     if element_id in listing_ids:
@@ -337,6 +343,10 @@ class Fixer:
         alignment = cfg.get("alignment")
         indent_cm = cfg.get("first_line_indent_cm")
         line_spacing = cfg.get("line_spacing")
+        left_indent_cm = cfg.get("left_indent_cm")
+        right_indent_cm = cfg.get("right_indent_cm")
+        space_before_pt = cfg.get("space_before_pt")
+        space_after_pt = cfg.get("space_after_pt")
         font_name = cfg.get("font_name")
         font_size_pt = cfg.get("font_size_pt")
         bold = cfg.get("bold")
@@ -357,6 +367,14 @@ class Fixer:
             dp.paragraph_format.first_line_indent = Cm(float(indent_cm))
         if line_spacing is not None:
             dp.paragraph_format.line_spacing = float(line_spacing)
+        if left_indent_cm is not None:
+            dp.paragraph_format.left_indent = Cm(float(left_indent_cm))
+        if right_indent_cm is not None:
+            dp.paragraph_format.right_indent = Cm(float(right_indent_cm))
+        if space_before_pt is not None:
+            dp.paragraph_format.space_before = Pt(float(space_before_pt))
+        if space_after_pt is not None:
+            dp.paragraph_format.space_after = Pt(float(space_after_pt))
 
         for run in dp.runs:
             if font_name:
@@ -381,6 +399,10 @@ class Fixer:
         font_size_pt = cfg.get("font_size_pt")
         line_spacing = cfg.get("line_spacing")
         indent_cm = cfg.get("first_line_indent_cm")
+        left_indent_cm = cfg.get("left_indent_cm")
+        right_indent_cm = cfg.get("right_indent_cm")
+        space_before_pt = cfg.get("space_before_pt")
+        space_after_pt = cfg.get("space_after_pt")
         alignment = cfg.get("alignment")
 
         for run in dp.runs:
@@ -414,4 +436,12 @@ class Fixer:
 
         if indent_cm is not None:
             dp.paragraph_format.first_line_indent = Cm(float(indent_cm) / 1.0)
+        if left_indent_cm is not None:
+            dp.paragraph_format.left_indent = Cm(float(left_indent_cm))
+        if right_indent_cm is not None:
+            dp.paragraph_format.right_indent = Cm(float(right_indent_cm))
+        if space_before_pt is not None:
+            dp.paragraph_format.space_before = Pt(float(space_before_pt))
+        if space_after_pt is not None:
+            dp.paragraph_format.space_after = Pt(float(space_after_pt))
 

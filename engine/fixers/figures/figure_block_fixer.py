@@ -6,14 +6,7 @@ from engine.core.fixer import BaseFixer
 from engine.models.document_model import DocumentModel
 from engine.models.violation_model import FixOperation, Violation
 from engine.shared.figure_caption_utils import is_figure_caption_text, normalize_figure_caption
-from engine.shared.figure_format import figure_caption_format, figure_paragraph_format
-
-
-def _has_image(xml_element) -> bool:
-    if xml_element is None:
-        return False
-    xml = xml_element.xml if hasattr(xml_element, "xml") else ""
-    return "w:drawing" in xml or "w:pict" in xml or "w:drawing" in str(xml)
+from engine.shared.figure_format import figure_caption_format, figure_paragraph_format, has_figure_image
 
 
 @dataclass
@@ -33,7 +26,7 @@ class FigureBlockFixer:
         n = len(paragraphs)
 
         for i, p in enumerate(paragraphs):
-            if not _has_image(getattr(p, "xml_element", None)):
+            if not has_figure_image(getattr(p, "xml_element", None)):
                 continue
 
             # Пустая строка сверху, если предыдущий абзац не пустой.
