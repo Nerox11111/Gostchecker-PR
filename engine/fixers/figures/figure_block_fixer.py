@@ -5,13 +5,8 @@ from dataclasses import dataclass
 from engine.core.fixer import BaseFixer
 from engine.models.document_model import DocumentModel
 from engine.models.violation_model import FixOperation, Violation
-from engine.shared.constants import (
-    GOST_FIRST_LINE_INDENT_CM,
-    GOST_LINE_SPACING_MAIN,
-    GOST_MAIN_FONT_NAME,
-    GOST_MAIN_FONT_SIZE_PT,
-)
 from engine.shared.figure_caption_utils import is_figure_caption_text, normalize_figure_caption
+from engine.shared.figure_format import figure_caption_format, figure_paragraph_format
 
 
 def _has_image(xml_element) -> bool:
@@ -49,6 +44,7 @@ class FigureBlockFixer:
                         FixOperation(
                             action="INSERT_EMPTY_PARAGRAPH_BEFORE",
                             target_element_id=p.id,
+                            meta=figure_paragraph_format(),
                         )
                     )
 
@@ -56,7 +52,7 @@ class FigureBlockFixer:
                 FixOperation(
                     action="SET_PARAGRAPH_FORMAT",
                     target_element_id=p.id,
-                    meta={"alignment": "CENTER", "first_line_indent_cm": 0.0},
+                    meta=figure_paragraph_format(),
                 )
             )
 
@@ -77,16 +73,7 @@ class FigureBlockFixer:
                         FixOperation(
                             action="SET_PARAGRAPH_FORMAT",
                             target_element_id=nxt.id,
-                            meta={
-                                "alignment": "CENTER",
-                                "first_line_indent_cm": 0.0,
-                                "line_spacing": GOST_LINE_SPACING_MAIN,
-                                "font_name": GOST_MAIN_FONT_NAME,
-                                "font_size_pt": GOST_MAIN_FONT_SIZE_PT,
-                                "bold": False,
-                                "italic": False,
-                                "underline": False,
-                            },
+                            meta=figure_caption_format(),
                         )
                     )
 
@@ -109,16 +96,7 @@ class FigureBlockFixer:
                 FixOperation(
                     action="SET_PARAGRAPH_FORMAT",
                     target_element_id=p.id,
-                    meta={
-                        "alignment": "CENTER",
-                        "first_line_indent_cm": 0.0,
-                        "line_spacing": GOST_LINE_SPACING_MAIN,
-                        "font_name": GOST_MAIN_FONT_NAME,
-                        "font_size_pt": GOST_MAIN_FONT_SIZE_PT,
-                        "bold": False,
-                        "italic": False,
-                        "underline": False,
-                    },
+                    meta=figure_caption_format(),
                 )
             )
 

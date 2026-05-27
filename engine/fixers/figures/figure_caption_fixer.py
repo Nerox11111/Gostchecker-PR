@@ -5,25 +5,20 @@ from dataclasses import dataclass
 from engine.core.fixer import BaseFixer
 from engine.models.document_model import DocumentModel
 from engine.models.violation_model import FixOperation, Violation
-from engine.shared.constants import (
-    GOST_FIRST_LINE_INDENT_CM,
-    GOST_LINE_SPACING_MAIN,
-    GOST_MAIN_FONT_NAME,
-    GOST_MAIN_FONT_SIZE_PT,
-)
 from engine.shared.figure_caption_utils import normalize_figure_caption
+from engine.shared.figure_format import figure_caption_format
 
 
 @dataclass
 class FigureCaptionFixer:
     def supported_violation_codes(self) -> set[str]:
-        return {"FIGURE_CAPTION_INVALID"}
+        return {"FIGURE_CAPTION_INVALID", "FIGURE_CAPTION_FORMAT_WRONG"}
 
     def build_fixes(self, document: DocumentModel, violations: list[Violation]) -> list[FixOperation]:
         ops: list[FixOperation] = []
         seen: set[str] = set()
         for v in violations:
-            if v.code != "FIGURE_CAPTION_INVALID" or v.element_id in seen:
+            if v.code not in self.supported_violation_codes() or v.element_id in seen:
                 continue
             seen.add(v.element_id)
             p = next((x for x in document.paragraphs if x.id == v.element_id), None)
@@ -43,16 +38,7 @@ class FigureCaptionFixer:
                 FixOperation(
                     action="SET_PARAGRAPH_FORMAT",
                     target_element_id=v.element_id,
-                    meta={
-                        "alignment": "CENTER",
-                        "first_line_indent_cm": GOST_FIRST_LINE_INDENT_CM,
-                        "line_spacing": GOST_LINE_SPACING_MAIN,
-                        "font_name": GOST_MAIN_FONT_NAME,
-                        "font_size_pt": GOST_MAIN_FONT_SIZE_PT,
-                        "bold": False,
-                        "italic": False,
-                        "underline": False,
-                    },
+                    meta=figure_caption_format(),
                 )
             )
         return ops
