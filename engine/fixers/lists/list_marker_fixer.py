@@ -25,20 +25,45 @@ MAIN_FMT = {
     "italic": False,
     "underline": False,
 }
+LIST_NUMBER_FMT = {
+    "font_name": GOST_MAIN_FONT_NAME,
+    "font_size_pt": GOST_MAIN_FONT_SIZE_PT,
+    "bold": False,
+    "italic": False,
+    "underline": False,
+}
 
 
 @dataclass
 class ListMarkerFixer:
     def supported_violation_codes(self) -> set[str]:
-        return {"LIST_MARKER_WRONG", "LIST_NUMBERING_ORDER"}
+        return {"LIST_MARKER_WRONG", "LIST_NUMBERING_ORDER", "LIST_NUMBER_FORMAT_WRONG"}
 
     def build_fixes(self, document: DocumentModel, violations: list[Violation]) -> list[FixOperation]:
         ops: list[FixOperation] = []
 
         wrong_marker_ids = {v.element_id for v in violations if v.code == "LIST_MARKER_WRONG"}
         wrong_number_ids = {v.element_id for v in violations if v.code == "LIST_NUMBERING_ORDER"}
+        wrong_number_format_ids = {v.element_id for v in violations if v.code == "LIST_NUMBER_FORMAT_WRONG"}
 
         formatted_lists: set[str] = set()
+        if wrong_number_format_ids:
+            ops.append(
+                FixOperation(
+                    action="SET_LIST_NUMBER_FORMAT",
+                    target_element_id=None,
+                    meta={
+                        **LIST_NUMBER_FMT,
+                        "style_names": sorted(
+                            {
+                                p.style_name
+                                for p in document.paragraphs
+                                if p.id in wrong_number_format_ids and p.style_name
+                            }
+                        ),
+                    },
+                )
+            )
 
         def add_main_format(pid: str) -> None:
             if pid in formatted_lists:
@@ -104,13 +129,13 @@ class ListMarkerFixer:
                 flush_block()
                 continue
             if NUMBERED_PREFIX_RE.match(text):
-                if p.id in wrong_number_ids or block:
+                if p.id in wrong_number_ids or p.id in wrong_number_format_ids or block:
                     block.append(p.id)
                 elif is_any_list_line(text):
                     add_main_format(p.id)
                 continue
             flush_block()
-            if is_any_list_line(text):
+            if p.id in wrong_number_format_ids or is_any_list_line(text):
                 add_main_format(p.id)
         flush_block()
 

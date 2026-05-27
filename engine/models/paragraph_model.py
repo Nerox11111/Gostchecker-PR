@@ -30,6 +30,10 @@ class ParagraphModel:
     right_indent_cm: float | None = None
     space_before_pt: float | None = None
     space_after_pt: float | None = None
+    is_list_item: bool = False
+    list_kind: str | None = None
+    list_level: int | None = None
+    list_num_id: str | None = None
     in_table: bool = False
     in_header_footer: bool = False
 

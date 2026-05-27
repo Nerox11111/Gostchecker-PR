@@ -23,6 +23,14 @@ window.VIOLATION_DICTIONARY = {
     title: "Неверные поля страницы",
     description: "Проверьте размеры полей по ГОСТ",
   },
+  PAGE_NUMBERING_INVALID: {
+    title: "Неверная нумерация страниц",
+    description: "Номер страницы должен быть в нижнем колонтитуле по центру",
+  },
+  TITLE_PAGE_NUMBERING_INVALID: {
+    title: "Номер на титульном листе",
+    description: "На титульном листе номер страницы не должен отображаться",
+  },
   STRUCTURAL_ELEMENT_MISSING: {
     title: "Отсутствует обязательный раздел",
     description: "Раздел обязателен для данного типа работы",
@@ -66,6 +74,10 @@ window.VIOLATION_DICTIONARY = {
   LIST_NUMBERING_ORDER: {
     title: "Нарушен порядок нумерации списка",
     description: "Нумерация в непрерывном блоке списка должна быть последовательной",
+  },
+  LIST_NUMBER_FORMAT_WRONG: {
+    title: "Неверный формат номера списка",
+    description: "Номер списка должен быть оформлен тем же шрифтом, что и основной текст",
   },
 };
 

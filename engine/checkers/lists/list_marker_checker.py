@@ -59,6 +59,23 @@ class ListMarkerChecker:
                 flush_block()
                 continue
 
+            if getattr(p, "is_list_item", False) and getattr(p, "list_kind", None) == "numbered":
+                if not (document.numbering or {}).get("list_number_format_ok"):
+                    violations.append(
+                        Violation(
+                            code="LIST_NUMBER_FORMAT_WRONG",
+                            element_id=p.id,
+                            message="Неверное форматирование номера списка",
+                            expected="Times New Roman 14",
+                            actual=p.style_name,
+                            actual_text=text[:120],
+                            zone_type=p.zone_type,
+                            severity=Severity.MEDIUM,
+                            rule_ref="gost-list-number-format",
+                        )
+                    )
+                continue
+
             m_bullet = BULLET_PREFIX_RE.match(text)
             if m_bullet:
                 symbol = m_bullet.group(1)

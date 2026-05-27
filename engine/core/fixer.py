@@ -58,6 +58,7 @@ class Fixer:
             "INSERT_EMPTY_PARAGRAPH_BEFORE": 15,
             "SET_FONT_FORMATTING": 20,
             "SET_FONT_FORMAT": 20,
+            "SET_LIST_NUMBER_FORMAT": 21,
             "SET_PARAGRAPH_TEXT": 25,
             "SET_PARAGRAPH_FORMAT": 30,
         }
@@ -119,35 +120,17 @@ class Fixer:
                         sec.right_margin = Cm(margins["right"] / 10.0)
 
             elif op.action == "SET_PAGE_NUMBERING":
-                # Реализуем поля PAGE в нижнем колонтитуле.
                 number_from_second = bool((op.meta or {}).get("number_from_second_page", True))
-                _ = number_from_second
 
                 for sec in doc.sections:
+                    sec.footer.is_linked_to_previous = False
+                    sec.first_page_footer.is_linked_to_previous = False
                     sec.different_first_page_header_footer = True
-                    footer = sec.footer
-                    p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
-                    p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                    if number_from_second:
+                        self._clear_header_footer(sec.first_page_footer)
+                    self._set_page_field_footer(sec.footer)
 
-                    # Простой: удалим содержимое текущего параграфа не можем надёжно,
-                    # поэтому просто добавим новое поле в конец.
-                    run = p.add_run()
-                    fldChar1 = OxmlElement("w:fldChar")
-                    fldChar1.set(qn("w:fldCharType"), "begin")
-
-                    instrText = OxmlElement("w:instrText")
-                    instrText.text = "PAGE"
-
-                    fldChar2 = OxmlElement("w:fldChar")
-                    fldChar2.set(qn("w:fldCharType"), "separate")
-
-                    fldChar3 = OxmlElement("w:fldChar")
-                    fldChar3.set(qn("w:fldCharType"), "end")
-
-                    run._r.append(fldChar1)
-                    run._r.append(instrText)
-                    run._r.append(fldChar2)
-                    run._r.append(fldChar3)
+                self._enable_field_updates(doc)
 
             elif op.action == "INSERT_EMPTY_PARAGRAPH_BEFORE":
                 continue
@@ -303,6 +286,9 @@ class Fixer:
                                     else:
                                         self._format_paragraph(para, main, is_listing=False)
 
+            elif op.action == "SET_LIST_NUMBER_FORMAT":
+                self._format_list_numbering(doc, op.meta or {})
+
             else:
                 # Неподдерживаемая операция.
                 continue
@@ -317,6 +303,61 @@ class Fixer:
 
         new_p = OxmlElement("w:p")
         dp._p.addprevious(new_p)
+
+    @staticmethod
+    def _clear_paragraph_content(dp: Any) -> None:
+        p_pr = dp._p.pPr
+        for child in list(dp._p):
+            if p_pr is not None and child is p_pr:
+                continue
+            dp._p.remove(child)
+
+    @classmethod
+    def _clear_header_footer(cls, part: Any) -> None:
+        paragraphs = part.paragraphs or [part.add_paragraph()]
+        for idx, paragraph in enumerate(paragraphs):
+            cls._clear_paragraph_content(paragraph)
+            if idx == 0:
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+    @classmethod
+    def _set_page_field_footer(cls, footer: Any) -> None:
+        paragraph = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+        cls._clear_paragraph_content(paragraph)
+        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+        run = paragraph.add_run()
+        for element in cls._page_field_elements():
+            run._r.append(element)
+
+    @staticmethod
+    def _page_field_elements() -> list[Any]:
+        fld_begin = OxmlElement("w:fldChar")
+        fld_begin.set(qn("w:fldCharType"), "begin")
+        fld_begin.set(qn("w:dirty"), "true")
+
+        instr_text = OxmlElement("w:instrText")
+        instr_text.set(qn("xml:space"), "preserve")
+        instr_text.text = " PAGE "
+
+        fld_separate = OxmlElement("w:fldChar")
+        fld_separate.set(qn("w:fldCharType"), "separate")
+
+        text = OxmlElement("w:t")
+        text.text = "1"
+
+        fld_end = OxmlElement("w:fldChar")
+        fld_end.set(qn("w:fldCharType"), "end")
+        return [fld_begin, instr_text, fld_separate, text, fld_end]
+
+    @staticmethod
+    def _enable_field_updates(doc: Any) -> None:
+        settings = doc.settings._element
+        update_fields = settings.find(qn("w:updateFields"))
+        if update_fields is None:
+            update_fields = OxmlElement("w:updateFields")
+            settings.append(update_fields)
+        update_fields.set(qn("w:val"), "true")
 
     @staticmethod
     def _set_paragraph_text(dp: Any, new_text: str, alignment: str | None) -> None:
@@ -444,4 +485,73 @@ class Fixer:
             dp.paragraph_format.space_before = Pt(float(space_before_pt))
         if space_after_pt is not None:
             dp.paragraph_format.space_after = Pt(float(space_after_pt))
+
+    @staticmethod
+    def _format_list_numbering(doc: Any, cfg: dict[str, Any]) -> None:
+        font_name = cfg.get("font_name") or "Times New Roman"
+        font_size_pt = float(cfg.get("font_size_pt", 14))
+        bold = bool(cfg.get("bold", False))
+        italic = bool(cfg.get("italic", False))
+        underline = bool(cfg.get("underline", False))
+
+        for style_name in cfg.get("style_names") or ["List Number"]:
+            try:
+                style = doc.styles[style_name]
+            except Exception:
+                continue
+            style.font.name = font_name
+            style.font.size = Pt(font_size_pt)
+            style.font.bold = bold
+            style.font.italic = italic
+            style.font.underline = underline
+            try:
+                r_pr = style._element.get_or_add_rPr()
+                r_fonts = r_pr.get_or_add_rFonts()
+                for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
+                    r_fonts.set(qn(f"w:{attr}"), font_name)
+            except Exception:
+                pass
+
+        try:
+            numbering = doc.part.numbering_part.element
+        except Exception:
+            return
+
+        for lvl in numbering.findall(".//" + qn("w:lvl")):
+            num_fmt = lvl.find(qn("w:numFmt"))
+            if num_fmt is not None and num_fmt.get(qn("w:val")) not in {None, "decimal"}:
+                continue
+            r_pr = lvl.find(qn("w:rPr"))
+            if r_pr is None:
+                r_pr = OxmlElement("w:rPr")
+                lvl.append(r_pr)
+
+            r_fonts = r_pr.find(qn("w:rFonts"))
+            if r_fonts is None:
+                r_fonts = OxmlElement("w:rFonts")
+                r_pr.append(r_fonts)
+            for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
+                r_fonts.set(qn(f"w:{attr}"), font_name)
+
+            size = r_pr.find(qn("w:sz"))
+            if size is None:
+                size = OxmlElement("w:sz")
+                r_pr.append(size)
+            size.set(qn("w:val"), str(int(font_size_pt * 2)))
+
+            size_cs = r_pr.find(qn("w:szCs"))
+            if size_cs is None:
+                size_cs = OxmlElement("w:szCs")
+                r_pr.append(size_cs)
+            size_cs.set(qn("w:val"), str(int(font_size_pt * 2)))
+
+            for tag, value in (("w:b", bold), ("w:i", italic), ("w:u", underline)):
+                el = r_pr.find(qn(tag))
+                if el is None:
+                    el = OxmlElement(tag)
+                    r_pr.append(el)
+                if tag == "w:u":
+                    el.set(qn("w:val"), "single" if value else "none")
+                else:
+                    el.set(qn("w:val"), "true" if value else "false")
 

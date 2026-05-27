@@ -21,6 +21,8 @@ from engine.checkers.font.font_size_checker import FontSizeChecker
 from engine.checkers.font.font_style_checker import FontStyleChecker
 from engine.checkers.font.font_spacing_checker import FontSpacingChecker
 from engine.checkers.page.margins_checker import MarginsChecker
+from engine.checkers.page.page_numbering_checker import PageNumberingChecker
+from engine.checkers.page.title_page_numbering_checker import TitlePageNumberingChecker
 from engine.checkers.structure.structural_elements_checker import StructuralElementsChecker
 from engine.checkers.tables.table_caption_checker import TableCaptionChecker
 from engine.checkers.formulas.formula_format_checker import FormulaFormatChecker
@@ -69,6 +71,8 @@ class ScopeDef:
 
 CHECKER_MAP: dict[str, Any] = {
     "margins": MarginsChecker(),
+    "page_numbering": PageNumberingChecker(),
+    "title_page_numbering": TitlePageNumberingChecker(),
     "font_family": FontFamilyChecker(),
     "font_size": FontSizeChecker(),
     "font_style": FontStyleChecker(),
@@ -109,9 +113,9 @@ SCOPES: list[ScopeDef] = [
     ScopeDef(
         scope_id="validate_page",
         title="Валидация: поля/нумерация",
-        checkers=["margins"],
+        checkers=["margins", "page_numbering", "title_page_numbering"],
         fixers=[],
-        description="Поля страницы (пока без чеков для footer PAGE).",
+        description="Поля страницы и нумерация PAGE в нижнем колонтитуле.",
     ),
     ScopeDef(
         scope_id="validate_structure",
@@ -165,7 +169,7 @@ SCOPES: list[ScopeDef] = [
     ScopeDef(
         scope_id="correct_page",
         title="Коррекция: поля/страницы",
-        checkers=["margins"],
+        checkers=["margins", "page_numbering", "title_page_numbering"],
         fixers=["margins", "page_numbering"],
         description="Исправляет поля и добавляет нумерацию PAGE в footer.",
     ),
@@ -196,6 +200,8 @@ SCOPE_INDEX = {s.scope_id: s for s in SCOPES}
 
 CHECKER_TITLES_RU: dict[str, str] = {
     "margins": "Поля страницы",
+    "page_numbering": "Нумерация страниц",
+    "title_page_numbering": "Нумерация титульного листа",
     "font_family": "Шрифт основного текста",
     "font_size": "Размер шрифта",
     "font_style": "Стиль шрифта (подчеркивание и т.п.)",

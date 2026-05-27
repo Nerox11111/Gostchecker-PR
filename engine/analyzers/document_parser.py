@@ -6,7 +6,6 @@ from typing import Any
 
 from docx import Document as DocxDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
 from docx.table import Table as DocxTable
 from docx.text.paragraph import Paragraph as DocxParagraph
 
@@ -32,6 +31,7 @@ class DocumentParser:
         doc = DocxDocument(BytesIO(docx_bytes))
 
         model = DocumentModel()
+        model.numbering = self._extract_numbering_metadata(doc)
 
         # Стили (для отладки/эвристик).
         try:
@@ -130,6 +130,7 @@ class DocumentParser:
                     alignment_val = alignment
 
                 style_name = dp.style.name if dp.style is not None else None
+                list_info = self._extract_paragraph_list_info(dp, style_name)
 
                 model.paragraphs.append(
                     ParagraphModel(
@@ -147,6 +148,10 @@ class DocumentParser:
                         right_indent_cm=right_indent_cm,
                         space_before_pt=space_before_pt,
                         space_after_pt=space_after_pt,
+                        is_list_item=list_info["is_list_item"],
+                        list_kind=list_info["list_kind"],
+                        list_level=list_info["list_level"],
+                        list_num_id=list_info["list_num_id"],
                         in_table=False,
                         in_header_footer=False,
                         xml_element=xml_element,
@@ -210,6 +215,7 @@ class DocumentParser:
                             line_spacing = pf.line_spacing
                             alignment = pf.alignment
                             style_name = para.style.name if para.style is not None else None
+                            list_info = self._extract_paragraph_list_info(para, style_name)
 
                             model.paragraphs.append(
                                 ParagraphModel(
@@ -227,6 +233,10 @@ class DocumentParser:
                                     right_indent_cm=right_indent_cm,
                                     space_before_pt=space_before_pt,
                                     space_after_pt=space_after_pt,
+                                    is_list_item=list_info["is_list_item"],
+                                    list_kind=list_info["list_kind"],
+                                    list_level=list_info["list_level"],
+                                    list_num_id=list_info["list_num_id"],
                                     in_table=True,
                                     in_header_footer=False,
                                     xml_element=xml_element,
@@ -236,4 +246,71 @@ class DocumentParser:
                             )
 
         return model
+
+    @staticmethod
+    def _extract_paragraph_list_info(dp: DocxParagraph, style_name: str | None) -> dict[str, Any]:
+        style_lower = (style_name or "").lower()
+        style_is_list = "list" in style_lower or "спис" in style_lower
+        list_kind = "numbered" if "number" in style_lower or "нумер" in style_lower else None
+        list_level: int | None = None
+        list_num_id: str | None = None
+
+        p_pr = getattr(getattr(dp, "_p", None), "pPr", None)
+        num_pr = getattr(p_pr, "numPr", None) if p_pr is not None else None
+        if num_pr is not None:
+            style_is_list = True
+            list_kind = list_kind or "numbered"
+            ilvl = getattr(num_pr, "ilvl", None)
+            num_id = getattr(num_pr, "numId", None)
+            if ilvl is not None:
+                try:
+                    list_level = int(ilvl.val)
+                except Exception:
+                    list_level = None
+            if num_id is not None:
+                try:
+                    list_num_id = str(num_id.val)
+                except Exception:
+                    list_num_id = None
+
+        return {
+            "is_list_item": style_is_list,
+            "list_kind": list_kind,
+            "list_level": list_level,
+            "list_num_id": list_num_id,
+        }
+
+    @staticmethod
+    def _extract_numbering_metadata(doc) -> dict[str, Any]:
+        sections: list[dict[str, Any]] = []
+        for idx, sec in enumerate(doc.sections):
+            footer_xml = sec.footer._element.xml if sec.footer is not None else ""
+            first_footer_xml = sec.first_page_footer._element.xml if sec.first_page_footer is not None else ""
+            sections.append(
+                {
+                    "index": idx,
+                    "different_first_page": bool(sec.different_first_page_header_footer),
+                    "footer_has_page_field": "PAGE" in footer_xml,
+                    "first_footer_has_page_field": "PAGE" in first_footer_xml,
+                }
+            )
+
+        numbering_xml = ""
+        try:
+            numbering_xml = doc.part.numbering_part.element.xml
+        except Exception:
+            numbering_xml = ""
+
+        return {
+            "sections": sections,
+            "list_number_format_ok": DocumentParser._numbering_definitions_use_main_font(numbering_xml),
+        }
+
+    @staticmethod
+    def _numbering_definitions_use_main_font(numbering_xml: str) -> bool:
+        if not numbering_xml or "w:numFmt" not in numbering_xml:
+            return False
+        if 'w:val="decimal"' not in numbering_xml:
+            return False
+        return "Times New Roman" in numbering_xml and 'w:sz w:val="28"' in numbering_xml
 
