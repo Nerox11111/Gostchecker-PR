@@ -30,10 +30,13 @@ CODE_SYNTAX_RE = re.compile(
     r"^\s*(def|class|if|elif|else|for|while|try|except|finally|with|import|from|"
     r"return|function|const|let|var|public|private|protected|static|void|int|"
     r"string|bool|boolean|float|double|using|namespace|package)\b|"
-    r"[{}<>]=?|==|!=|<=|>=|&&|\|\||:=|=>|->|//|/\*|\*/",
+    r"[{}]|==|!=|<=|>=|&&|\|\||:=|=>|->|^\s*//|/\*|\*/",
     re.IGNORECASE,
 )
 
+ASSIGNMENT_RE = re.compile(r"^\s*[A-Za-z_][\w.,\s\[\]]*\s*=\s*[^=]")
+URL_RE = re.compile(r"\b(?:https?://|www\.)\S+", re.IGNORECASE)
+REFERENCE_MARKER_RE = re.compile(r"(//\s*URL:|URL:|https?://)", re.IGNORECASE)
 CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
 
 
@@ -57,8 +60,8 @@ def looks_like_prose_line(text: str) -> bool:
         return False
     if SQL_STATEMENT_START_RE.match(t) or SQL_CLAUSE_START_RE.match(t):
         return False
-    if CODE_SYNTAX_RE.search(t):
-        return False
+    if REFERENCE_MARKER_RE.search(t):
+        return True
     return _word_count(t) >= 8 or bool(re.search(r"[.!?]\s*$", t))
 
 
@@ -85,12 +88,20 @@ def looks_like_code_line(text: str) -> bool:
         return False
     if is_listing_caption_text(t):
         return False
+    if looks_like_prose_line(t):
+        return False
+    if REFERENCE_MARKER_RE.search(t) and _has_cyrillic(t):
+        return False
+    if _has_cyrillic(t) and _word_count(t) >= 6:
+        return False
     if SQL_STATEMENT_START_RE.match(t):
         return True
     if SQL_CLAUSE_START_RE.match(t) and (not _has_cyrillic(t) or _word_count(t) <= 12):
         return True
     # Короткие команды вроде "use store;"
     if CODE_SYNTAX_RE.search(t):
+        return True
+    if ASSIGNMENT_RE.search(t) and not URL_RE.search(t):
         return True
     sql_hits = SQL_KEYWORD_RE.findall(t)
     if len(sql_hits) >= 2 and not _has_cyrillic(t):
