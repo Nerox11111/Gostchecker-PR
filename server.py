@@ -342,6 +342,17 @@ def index() -> str:
     )
 
 
+@app.get("/api/health")
+def health() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "backend": "gostchecker",
+        "profiles": ["LIGHT", "MEDIUM", "HARD", "CUSTOM"],
+        "checkers": len(CHECKER_MAP),
+        "fixers": len(FIXER_MAP),
+    }
+
+
 @app.get("/api/modules")
 def modules() -> dict[str, Any]:
     # Фронтенду важно: scope можно запускать и в validate, и в correct (по action).
@@ -468,7 +479,35 @@ def _resolve_profile(profile: str | None, doc_type: dict[str, Any]) -> str | Non
     if doc_type.get("recommended_mode"):
         return str(doc_type["recommended_mode"]).upper()
     return None
-    
+
+
+def _build_docx_preview(docx_bytes: bytes, *, per_page: int = 14, max_pages: int = 8) -> dict[str, Any]:
+    try:
+        document = DocumentModel.from_docx_bytes(docx_bytes)
+    except Exception as exc:
+        return {
+            "pages": [],
+            "paragraph_count": 0,
+            "truncated": False,
+            "error": f"Не удалось собрать preview: {exc}",
+        }
+
+    paragraphs = [
+        (p.text or "").strip()
+        for p in document.paragraphs
+        if (p.text or "").strip()
+    ]
+    limited = paragraphs[: per_page * max_pages]
+    pages = [
+        {"page": index + 1, "paragraphs": limited[index * per_page : (index + 1) * per_page]}
+        for index in range((len(limited) + per_page - 1) // per_page)
+    ]
+    return {
+        "pages": pages,
+        "paragraph_count": len(paragraphs),
+        "truncated": len(paragraphs) > len(limited),
+    }
+
 
 def _serialize_run_context(
     doc_type: dict[str, Any],
@@ -561,6 +600,7 @@ def run(
             "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "size_bytes": len(result.fixed_docx_bytes),
             "base64": base64.b64encode(result.fixed_docx_bytes).decode("ascii"),
+            "preview": _build_docx_preview(result.fixed_docx_bytes),
         }
 
     return JSONResponse(
