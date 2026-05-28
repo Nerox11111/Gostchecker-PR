@@ -212,22 +212,26 @@ export const Home = ({ id, fetchedUser, launchParams, onResult, theme, onToggleT
           ГОСТ<span style={{ color: 'var(--cyan)', textShadow: '0 0 12px rgba(0,229,255,.55)' }}>ЧЕКЕР</span>
         </span>
       </PanelHeader>
-      <button type="button" className="theme-toggle theme-toggle--floating" onClick={onToggleTheme} aria-label="Переключить тему">
-        {theme === 'dark' ? 'Light' : 'Dark'}
-      </button>
 
       <Div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 16, animation: 'fadeIn .5s ease' }}>
-          {fetchedUser?.photo_100 && <img src={fetchedUser.photo_100} alt="" style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid var(--b1)', flexShrink: 0 }} />}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--t3)' }}>режим доступа</div>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>
-              {fetchedUser ? `${fetchedUser.first_name} ${fetchedUser.last_name}` : 'VK Mini Apps'}
+        <div className="home-toolbar">
+          <div className="home-user">
+            {fetchedUser?.photo_100 && <img src={fetchedUser.photo_100} alt="" />}
+            <div style={{ minWidth: 0 }}>
+              <div className="home-user__label">режим доступа</div>
+              <div className="home-user__name">
+                {fetchedUser ? `${fetchedUser.first_name} ${fetchedUser.last_name}` : 'VK Mini Apps'}
+              </div>
             </div>
           </div>
-          <div className={`status-pill ${health?.status === 'ok' ? 'status-pill--ok' : ''}`}>
-            <div />
-            {health?.status === 'ok' ? 'API online' : 'API offline'}
+          <div className="home-toolbar__actions">
+            <div className={`status-pill ${health?.status === 'ok' ? 'status-pill--ok' : ''}`}>
+              <div />
+              {health?.status === 'ok' ? 'API online' : 'API offline'}
+            </div>
+            <button type="button" className="theme-toggle" onClick={onToggleTheme} aria-label="Переключить тему">
+              {theme === 'dark' ? 'Light' : 'Dark'}
+            </button>
           </div>
         </div>
 
