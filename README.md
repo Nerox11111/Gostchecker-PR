@@ -86,7 +86,7 @@ RestartSec=3
 WantedBy=multi-user.target
 ```
 
-Запуск:
+Запусти сервис:
 
 ```bash
 systemctl daemon-reload
@@ -94,7 +94,51 @@ systemctl enable --now gost-api
 systemctl status gost-api
 ```
 
-Nginx reverse proxy. Подставь свой домен вместо `api.example.ru`:
+Если в статусе видно `active (running)`, backend уже работает внутри сервера на `127.0.0.1:8000`. Проверь это прямо на сервере:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+Ожидаемый смысл ответа: `status` должен быть `ok`. Если ответа нет, сначала смотри backend-логи:
+
+```bash
+journalctl -u gost-api -n 100 --no-pager
+```
+
+## Настройка Nginx reverse proxy
+
+Backend слушает только внутренний адрес `127.0.0.1:8000`. Это правильно: наружу его должен отдавать Nginx. Nginx будет принимать запросы на публичном домене, например `api.example.ru`, и прокидывать их в FastAPI.
+
+Перед настройкой проверь две вещи:
+
+1. У тебя есть домен или поддомен для API, например `api.example.ru`.
+2. В DNS у этого домена создана `A`-запись на IPv4 твоего сервера.
+
+Проверить, куда сейчас указывает домен, можно так:
+
+```bash
+dig +short api.example.ru
+```
+
+Если `dig` не установлен:
+
+```bash
+apt install -y dnsutils
+dig +short api.example.ru
+```
+
+В ответе должен появиться IP твоего сервера. Если ответа нет или IP другой, сначала поправь DNS у регистратора/в панели домена и подожди обновления.
+
+### 1. Создай конфиг Nginx
+
+Открой новый файл:
+
+```bash
+nano /etc/nginx/sites-available/gost-api
+```
+
+Вставь конфиг. Замени `api.example.ru` на свой реальный домен:
 
 ```nginx
 server {
@@ -114,16 +158,148 @@ server {
 }
 ```
 
-Проверка:
+Сохрани файл:
+
+- `Ctrl + O`
+- `Enter`
+- `Ctrl + X`
+
+### 2. Включи сайт в Nginx
+
+Создай символическую ссылку из `sites-available` в `sites-enabled`:
+
+```bash
+ln -s /etc/nginx/sites-available/gost-api /etc/nginx/sites-enabled/gost-api
+```
+
+Если команда скажет, что файл уже существует, это не страшно. Значит сайт уже включен. Можно проверить так:
+
+```bash
+ls -l /etc/nginx/sites-enabled/
+```
+
+Если в Nginx включен дефолтный сайт и он мешает, его можно отключить:
+
+```bash
+rm -f /etc/nginx/sites-enabled/default
+```
+
+### 3. Проверь конфиг и перезагрузи Nginx
 
 ```bash
 nginx -t
 systemctl reload nginx
+systemctl status nginx
+```
+
+`nginx -t` должен написать примерно:
+
+```text
+syntax is ok
+test is successful
+```
+
+Если там ошибка, Nginx не перезагружай, сначала исправь строку, которую он покажет.
+
+### 4. Проверь API через Nginx
+
+Сначала проверка backend напрямую:
+
+```bash
 curl http://127.0.0.1:8000/api/health
+```
+
+Потом проверка через домен:
+
+```bash
 curl http://api.example.ru/api/health
 ```
 
-Для HTTPS поставь `certbot` и выпусти сертификат на домен. VK Mini Apps лучше сразу подключать к HTTPS API.
+Если первый `curl` работает, а второй нет, проблема почти точно в Nginx, DNS или открытых портах.
+
+Что проверить:
+
+```bash
+systemctl status nginx
+journalctl -u nginx -n 100 --no-pager
+nginx -T | grep -A 30 "server_name api.example.ru"
+```
+
+Также проверь, слушает ли Nginx порт `80`:
+
+```bash
+ss -tulpn | grep ':80'
+```
+
+Если используешь `ufw`, открой HTTP/HTTPS:
+
+```bash
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw status
+```
+
+На TimeWeb также проверь, что порты `80` и `443` не закрыты в панели firewall/security groups.
+
+## HTTPS через Certbot
+
+VK Mini Apps лучше подключать сразу к HTTPS API. После того как `http://api.example.ru/api/health` начал отвечать, ставь сертификат.
+
+Установи certbot:
+
+```bash
+apt install -y certbot python3-certbot-nginx
+```
+
+Выпусти сертификат. Замени домен на свой:
+
+```bash
+certbot --nginx -d api.example.ru
+```
+
+Certbot спросит email и согласие с условиями. Если предложит включить redirect с HTTP на HTTPS, выбирай redirect. После успешного выпуска он сам допишет SSL-настройки в Nginx.
+
+Проверь:
+
+```bash
+nginx -t
+systemctl reload nginx
+curl https://api.example.ru/api/health
+```
+
+Проверить автообновление сертификата:
+
+```bash
+certbot renew --dry-run
+```
+
+После этого в `mini-app/.env.production` указывай именно HTTPS-адрес:
+
+```env
+VITE_API_BASE_URL=https://api.example.ru
+```
+
+Затем пересобери и задеплой frontend:
+
+```bash
+cd /opt/gostchecker/mini-app
+npm ci
+npm run build
+npm run deploy
+```
+
+В кабинете VK Mini Apps добавь домен `https://api.example.ru` в разрешенные домены, иначе запросы из приложения могут блокироваться.
+
+## Быстрый чек-лист после настройки сервера
+
+```bash
+systemctl status gost-api
+systemctl status nginx
+curl http://127.0.0.1:8000/api/health
+curl https://api.example.ru/api/health
+```
+
+Если все четыре пункта в порядке, backend опубликован корректно.
 
 ## Обновление backend без потери конфигов
 
