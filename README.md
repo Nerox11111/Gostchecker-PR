@@ -143,20 +143,42 @@ nano /etc/nginx/sites-available/gost-api
 ```nginx
 server {
     listen 80;
+    listen [::]:80;
+
     server_name api.example.ru;
 
     client_max_body_size 32m;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
+
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
         proxy_read_timeout 300;
+        proxy_send_timeout 300;
     }
 }
 ```
+
+Важно: домен должен быть именно в строке `server_name`.
+
+Правильно:
+
+```nginx
+server_name gostchecker.ru;
+```
+
+Неправильно:
+
+```nginx
+gostchecker.ru
+```
+
+Если домен записан отдельной строкой, `nginx -t` выдаст ошибку вида `unknown directive "gostchecker.ru"`.
 
 Сохрани файл:
 
@@ -201,6 +223,31 @@ test is successful
 
 Если там ошибка, Nginx не перезагружай, сначала исправь строку, которую он покажет.
 
+Частый пример ошибки:
+
+```text
+unknown directive "gostchecker.ru" in /etc/nginx/sites-enabled/gost-api:3
+```
+
+Это значит, что в конфиге домен написан как отдельная команда. Открой файл:
+
+```bash
+nano /etc/nginx/sites-available/gost-api
+```
+
+И исправь строку с доменом на:
+
+```nginx
+server_name gostchecker.ru;
+```
+
+После этого снова:
+
+```bash
+nginx -t
+systemctl reload nginx
+```
+
 ### 4. Проверь API через Nginx
 
 Сначала проверка backend напрямую:
@@ -216,6 +263,38 @@ curl http://api.example.ru/api/health
 ```
 
 Если первый `curl` работает, а второй нет, проблема почти точно в Nginx, DNS или открытых портах.
+
+Если оба запроса возвращают:
+
+```json
+{"detail":"Not Found"}
+```
+
+Это уже не ошибка Nginx. Это ответ FastAPI: запрос дошел до backend, но на сервере запущена старая версия кода без маршрута `/api/health`.
+
+В таком случае сначала проверь любой старый endpoint:
+
+```bash
+curl http://127.0.0.1:8000/api/modules
+curl http://api.example.ru/api/modules
+```
+
+Если `/api/modules` отвечает большим JSON со `scopes`, backend и Nginx работают. Затем обнови код:
+
+```bash
+cd /opt/gostchecker
+git pull
+systemctl restart gost-api
+curl http://127.0.0.1:8000/api/health
+curl http://api.example.ru/api/health
+```
+
+Если `git pull` пишет, что обновлений нет, проверь, что локальные изменения действительно запушены в GitHub и сервер смотрит на правильный репозиторий:
+
+```bash
+git remote -v
+git log -3 --oneline
+```
 
 Что проверить:
 
